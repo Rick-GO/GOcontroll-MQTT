@@ -33,7 +33,7 @@
 * OF SUCH DAMAGE.
 *
 *
-* Author: 					Rick Gijsberts 				  <rickgijsberts@gocontroll.com>
+* Author: Rick Gijsberts  <rickgijsberts@gocontroll.com>
 ****************************************************************************************/
 
 /* General includes for data types and string functions */

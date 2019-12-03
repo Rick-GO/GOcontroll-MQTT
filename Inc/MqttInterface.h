@@ -33,7 +33,7 @@
 * OF SUCH DAMAGE.
 *
 *
-* Author: 					Rick Gijsberts 				  <rickgijsberts@gocontroll.com>
+* Author: Rick Gijsberts  <rickgijsberts@gocontroll.com>
 ****************************************************************************************/
 
 #ifndef GOCONTROLL_INC_MQTTINTERFACE_H_

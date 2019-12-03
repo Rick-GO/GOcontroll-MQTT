@@ -33,7 +33,7 @@
 * OF SUCH DAMAGE.
 *
 *
-* Author: 					Rick Gijsberts 				  <rickgijsberts@gocontroll.com>
+* Author: Rick Gijsberts  <rickgijsberts@gocontroll.com>
 ****************************************************************************************/
 
 /* General includes for data types and string functions */
@@ -95,7 +95,7 @@ uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port)
 
 
 /***************************************************************************************
-** \brief		Function that checks for new incomming data over the TCP connection. This
+** \brief		Function that checks for new incoming data over the TCP connection. This
 ** 				function needs to be called from a dedicated thread/task that is allowed
 ** 				to be blocked. Don't use other routines in this thread/task since data can
 ** 				be missed on the TCP connection.
