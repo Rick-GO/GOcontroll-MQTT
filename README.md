@@ -8,12 +8,11 @@ GOcontroll-MQTT is a lightweight, client orientated MQTT stack to construct mess
 - QOS 1 and 2
 - Retain flag for messages
 - Reinitialize connection if lost
-
 - Configurable timeout and retries for:	
-- connection acknowledge
-- subscribe acknowledge
-- publish acknowledge (QOS == 1)
-- ping response
+  - connection acknowledge
+  - subscribe acknowledge
+  - publish acknowledge (QOS == 1)
+  - ping response
 
 
 ## Stack build-up
