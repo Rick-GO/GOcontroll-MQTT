@@ -51,7 +51,7 @@ In *MqttInterface.h* add your own interface macro
 
 ***Stack engine***
 
-*MqttStackScheduler()*
+*MqttStack_Scheduler()*
 
 To power up the stack, the user needs to call this function each 10 ms. It is 
 important to provide a steady timing otherwise timeouts and ping actions are 
