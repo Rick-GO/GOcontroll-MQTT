@@ -65,16 +65,21 @@ uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port)
 #if MQTTNETCONNINTERFACE == 1
 	ip_addr_t addr;
 
+	/* portSimulation is used to bind to another port during reconnection
+	 * This mechanism speeds up the reconnection (bind) process */
+	static uint8_t portSimulation = 0;
+
 	/* Check if DHCP has retrieved an IP addres */
 	if(dhcp_supplied_address(&gnetif)!= 1){return 0;}
 
 	/* Initialize DNS to use a DNS addres instead of an IP addres */
 	dns_init();
 
-	/* If the was already a connection, close it */
+	/* If there was already a connection, close it */
 	if(conn != NULL)
 	{
 	netconn_close(conn);
+	netconn_delete(conn);
 	}
 
 	/* If failed to retrieve DNS address exit function */
@@ -82,7 +87,7 @@ uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port)
 
 	conn 						= netconn_new ( NETCONN_TCP );
 	/* If failed to bind to TCP server exit function */
-	if(netconn_bind ( conn, IP_ADDR_ANY, 9 )!= 0 ){return 0;}
+	if(netconn_bind ( conn, IP_ADDR_ANY, portSimulation++ )!= 0 ){return 0;}
 	/* If failed to connect to TCP server exit function */
 	if( netconn_connect ( conn, &addr, port )!= 0 ){return 0;}
 
@@ -115,6 +120,12 @@ void MqttInterface_ReceiveFromServer(void)
 		netbuf_copy(buf, &receiveBuffer.data[receiveBuffer.writePointer], buf->p->tot_len);
 		receiveBuffer.writePointer += buf->p->tot_len;
 		netbuf_delete(buf);
+	}
+	else
+	{
+		/* Implement a task delay otherwise this task/thread will consume 100 cpu
+		 * if disconnected by the remote */
+
 	}
 #else
 	/* Space for other interface to use MQTT on */
