@@ -71,7 +71,7 @@ static void MqttStack_ConnectToBroker(void)
 		mqttStackConnection.acknowledgePendingCounter ++;
 		if(mqttStackConnection.acknowledgePendingCounter > CONNECTIONACKNOWLEDGEMENTTIMEOUT/10)
 		{
-		MqttStack_ReinitializeConnection();
+			mqttStack.reinitializeConnection = MQTTTRUE ;
 		}
 		return;
 	}
