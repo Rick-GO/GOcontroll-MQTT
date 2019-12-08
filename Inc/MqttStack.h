@@ -39,6 +39,8 @@
 #ifndef GOCONTROLL_INC_MQTTSTACK_H_
 #define GOCONTROLL_INC_MQTTSTACK_H_
 
+#include "stdio.h"
+
 
 /* MQTT protocol definitions */
 #define PROTOCOL				"MQTT"

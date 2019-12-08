@@ -92,14 +92,13 @@ uint8_t MqttApplication_SubscribeToTopic(char* topic, uint8_t qos, char* data)
 
 	/* Check if topic is not to long */
 	if(strlen(topic) >= MAXTOPICCHARACTERS){return 0;}
-	strcpy((char*)&mqttSubscribe[mqttStackSubscribe.topicCounter].topic, topic);
-
 	/* Check if QOS has a value between 0 and 2 */
 	if(qos > 2){return 0;}
-	mqttSubscribe[mqttStackSubscribe.topicCounter].qos = qos;
-
 	/* Check if data pointer is not empty */
 	if(data == NULL){return 0;}
+
+	strcpy((char*)&mqttSubscribe[mqttStackSubscribe.topicCounter].topic, topic);
+	mqttSubscribe[mqttStackSubscribe.topicCounter].qos = qos;
 	mqttSubscribe[mqttStackSubscribe.topicCounter++].data = data;
 
 	return 1;
@@ -117,27 +116,24 @@ uint8_t MqttApplication_SubscribeToTopic(char* topic, uint8_t qos, char* data)
 ****************************************************************************************/
 uint8_t MqttApplication_PublishToTopic(char* topic, uint8_t qos, uint8_t retain, char* data)
 {
-	if(strlen(topic) >= MAXTOPICCHARACTERS){return 0;}
-	strcpy((char*)&mqttPublish.topic, topic);
-
-	/* Check if data pointer is not empty */
-	if(data != NULL){return 0;}
-
 	/* Check if not already a message is pending*/
 	if(mqttStackPublish.messagePending == MQTTTRUE){return 0;}
 
+	/* Check if string from topic is not to long */
+	if(strlen(topic) >= MAXTOPICCHARACTERS){return 0;}
 	/* Check if QOS has a value between 0 and 2 */
 	if(qos > 2){return 0;}
-	mqttPublish.qos = qos;
-
 	/* Check if retain flag is 1 or 0 */
 	if(retain > 1){return 0;}
-	mqttPublish.retain = retain;
-
 	/* Check if data pointer is not empty */
 	if(data == NULL){return 0;}
+
+	strcpy((char*)&mqttPublish.topic, topic);
+	mqttPublish.qos = qos;
+	mqttPublish.retain = retain;
 	mqttPublish.data = data;
 
+	/* Set flag to tell the stack a new message is pending */
 	mqttStackPublish.messagePending = MQTTTRUE;
 
 	return 1;
