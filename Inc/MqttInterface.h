@@ -82,7 +82,7 @@ _sendBuffer sendBuffer;
 
 uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port);
 uint8_t MqttInterface_SendToServer(uint8_t dataLocation, uint8_t length);
-void MqttInterface_ReceiveFromServer(void);
+uint8_t MqttInterface_ReceiveFromServer(void);
 void MqttInterface_ExtractReceiveBuffer(void);
 
 void MqttInterface_LoadSendQueue(uint8_t dataPointer, uint8_t length, uint8_t priority);

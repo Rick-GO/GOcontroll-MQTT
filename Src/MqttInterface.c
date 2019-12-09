@@ -105,14 +105,12 @@ uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port)
 ** 				to be blocked. Don't use other routines in this thread/task since data can
 ** 				be missed on the TCP connection.
 ** \param		None
-** \return		None
+** \return		1 if proper TCP connection 0 otherwise
 **
 ****************************************************************************************/
-void MqttInterface_ReceiveFromServer(void)
+uint8_t MqttInterface_ReceiveFromServer(void)
 {
 #if MQTTNETCONNINTERFACE == 1
-	if(conn == NULL){return;}
-
 	struct netbuf *buf;
 
 	if(netconn_recv(conn, &buf) == ERR_OK)
@@ -120,12 +118,13 @@ void MqttInterface_ReceiveFromServer(void)
 		netbuf_copy(buf, &receiveBuffer.data[receiveBuffer.writePointer], buf->p->tot_len);
 		receiveBuffer.writePointer += buf->p->tot_len;
 		netbuf_delete(buf);
+		return 1;
 	}
 	else
 	{
 		/* Implement a task delay otherwise this task/thread will consume 100 cpu
 		 * if disconnected by the remote */
-
+		return 0;
 	}
 #else
 	/* Space for other interface to use MQTT on */
