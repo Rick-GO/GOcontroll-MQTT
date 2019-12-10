@@ -199,7 +199,7 @@ static void MqttStack_SubscribeToTopic(void)
 	/* Exit subscribe routine if there are no topics to subscribe to */
 	if(mqttStackSubscribe.topicCounter == 0){return;}
 	/* Exit subscribe routine if subscribed to al topics */
-	if(mqttStackSubscribe.topicCounter >= mqttStackSubscribe.topic){return;}
+	if(mqttStackSubscribe.topic >= mqttStackSubscribe.topicCounter){return;}
 
 	if(mqttStackSubscribe.acknowledgePending == MQTTTRUE)
 	{
