@@ -71,7 +71,7 @@ static void MqttStack_ConnectToBroker(void)
 		mqttStackConnection.acknowledgePendingCounter ++;
 		if(mqttStackConnection.acknowledgePendingCounter > CONNECTIONACKNOWLEDGEMENTTIMEOUT/10)
 		{
-			mqttStack.reinitializeConnection = MQTTTRUE ;
+			MqttStack_ReinitializeConnection();
 		}
 		return;
 	}
@@ -152,8 +152,7 @@ static void MqttStack_PingToBroker(void)
 	/* In case PINGRETRIES pings are not acknowledged by broker, restart connection */
 	if(mqttStackPing.acknowledgePending >=PINGRETRIES)
 	{
-		mqttStackPing.acknowledgePending = 0;
-		mqttStack.reinitializeConnection =  MQTTTRUE;
+		MqttStack_ReinitializeConnection();
 	return;
 	}
 
@@ -200,7 +199,7 @@ static void MqttStack_SubscribeToTopic(void)
 	/* Exit subscribe routine if there are no topics to subscribe to */
 	if(mqttStackSubscribe.topicCounter == 0){return;}
 	/* Exit subscribe routine if subscribed to al topics */
-	if(mqttStackSubscribe.topicCounter == mqttStackSubscribe.topic){return;}
+	if(mqttStackSubscribe.topicCounter >= mqttStackSubscribe.topic){return;}
 
 	if(mqttStackSubscribe.acknowledgePending == MQTTTRUE)
 	{
@@ -216,7 +215,7 @@ static void MqttStack_SubscribeToTopic(void)
 		if(subscribeFail >= SUBSCRIBERETRIES)
 		{
 		subscribeFail = 0;
-		mqttStack.reinitializeConnection =  MQTTTRUE;
+		MqttStack_ReinitializeConnection();
 		return;
 		}
 
@@ -257,7 +256,11 @@ static void MqttStack_SubscribeToTopic(void)
 void MqttStack_SubscribeAcknowledge(void)
 {
 	mqttStackSubscribe.acknowledgePending = MQTTFALSE;
+	/* Check if there are subscribtions that need to be acknowledged */
+	if(mqttStackSubscribe.topic < mqttStackSubscribe.topicCounter)
+	{
 	mqttStackSubscribe.topic ++;
+	}
 	mqttStackSubscribe.acknowledgePendingTimer = 0;
 }
 
@@ -550,8 +553,6 @@ static void MqttStack_MessageIdGen(void)
 ****************************************************************************************/
 static void MqttStack_ReinitializeConnection(void)
 {
-	if(mqttStack.reinitializeConnection ==  MQTTFALSE){return;}
-
 	mqttStackConnection.active = 0;
 	mqttStackConnection.acknowledgePendingCounter = 0;
 
@@ -581,8 +582,6 @@ static void MqttStack_ReinitializeConnection(void)
 	sendBuffer.writePointer = 0;
 
 	mqttStack.mqttConnectionsLost++;
-
-	mqttStack.reinitializeConnection =  MQTTFALSE;
 }
 
 
@@ -602,6 +601,4 @@ void MqttStack_Scheduler(void)
 
 	MqttInterface_SendQueue();
 	MqttInterface_ExtractReceiveBuffer();
-
-	MqttStack_ReinitializeConnection();
 }
