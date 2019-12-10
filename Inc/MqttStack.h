@@ -133,7 +133,6 @@ uint8_t		connectionFlags;
 
 typedef struct{
 uint16_t messageId;
-uint8_t reinitializeConnection;
 uint16_t mqttConnectionsLost;
 }_mqttStack;
 
