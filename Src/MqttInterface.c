@@ -53,6 +53,8 @@
 /* construct the dataholder for the connection */
 struct netconn *conn;
 
+
+
 /***************************************************************************************
 ** \brief		Interface function to connect to a TCP server
 ** \param		Pointer to a string that holds the address of the broker
@@ -70,7 +72,7 @@ uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port)
 	static uint8_t portSimulation = 0;
 
 	/* Check if DHCP has retrieved an IP addres */
-//	if(dhcp_supplied_address(&gnetif)!= 1){return 0;}
+	if((dhcp_supplied_address(&gnetif))!= 1){return 0;}
 
 	/* Initialize DNS to use a DNS addres instead of an IP addres */
 	dns_init();
@@ -112,6 +114,8 @@ uint8_t MqttInterface_ReceiveFromServer(void)
 {
 #if MQTTNETCONNINTERFACE == 1
 	struct netbuf *buf;
+
+	if(conn == NULL){return 0;}
 
 	if(netconn_recv(conn, &buf) == ERR_OK)
 	{
