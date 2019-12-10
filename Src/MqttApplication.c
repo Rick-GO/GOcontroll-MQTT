@@ -116,9 +116,6 @@ uint8_t MqttApplication_SubscribeToTopic(char* topic, uint8_t qos, char* data)
 ****************************************************************************************/
 uint8_t MqttApplication_PublishToTopic(char* topic, uint8_t qos, uint8_t retain, char* data)
 {
-	/* Check if not already a message is pending*/
-	if(mqttStackPublish.messagePending == MQTTTRUE){return 0;}
-
 	/* Check if string from topic is not to long */
 	if(strlen(topic) >= MAXTOPICCHARACTERS){return 0;}
 	/* Check if QOS has a value between 0 and 2 */
