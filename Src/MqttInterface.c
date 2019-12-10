@@ -119,9 +119,16 @@ uint8_t MqttInterface_ReceiveFromServer(void)
 
 	if(netconn_recv(conn, &buf) == ERR_OK)
 	{
-		netbuf_copy(buf, &receiveBuffer.data[receiveBuffer.writePointer], buf->p->tot_len);
-		receiveBuffer.writePointer += buf->p->tot_len;
+		uint8_t dataPointer = receiveBuffer.writePointer;
+
+		for(uint8_t bufferPointer = 0; bufferPointer < buf->p->tot_len; bufferPointer++)
+		{
+			netbuf_copy_partial(buf,&receiveBuffer.data[dataPointer++],1,0+bufferPointer);
+		}
+
+		receiveBuffer.writePointer = dataPointer;
 		netbuf_delete(buf);
+
 		return 1;
 	}
 	else
@@ -141,7 +148,7 @@ uint8_t MqttInterface_ReceiveFromServer(void)
 ** 				constructs the data array and when ready is send the amount of bytes away=
 ** \param		Data location (index) from the sendbuffer that is filled by the stack
 ** \param		The length of the data that needs to be send
-** \return		The length of the message that was send
+** \return		1 If message was send succesfully
 **
 ****************************************************************************************/
 uint8_t MqttInterface_SendToServer(uint8_t dataLocation, uint8_t length)
@@ -153,12 +160,19 @@ uint8_t MqttInterface_SendToServer(uint8_t dataLocation, uint8_t length)
 	{
 		sendBuf[bufferPointer] = sendBuffer.data[sendBuffer.readPointer++];
 	}
+
 #if MQTTNETCONNINTERFACE == 1
-netconn_write(conn, &sendBuf[0], length, NETCONN_NOFLAG);
+
+	if(netconn_write(conn, &sendBuf[0], length, NETCONN_NOFLAG)==ERR_OK)
+	{
+		return 1;
+	}
+return 0;
+
 #else
 /* Space for other interface to use MQTT on */
 #endif
-return length;
+
 }
 
 
@@ -172,6 +186,7 @@ return length;
 ****************************************************************************************/
 void MqttInterface_SendQueue(void)
 {
+
 	/* Check if there is data in the que to send */
 	if(queue.readPointer == queue.writePointer){return;}
 
@@ -193,9 +208,12 @@ void MqttInterface_SendQueue(void)
 
 
 	/* Send the data to the server */
-	MqttInterface_SendToServer(queue.dataLocation[queue.readPointer], queue.dataLength[queue.readPointer] );
+	if (MqttInterface_SendToServer(queue.dataLocation[queue.readPointer], queue.dataLength[queue.readPointer])==1)
+	{
+		queue.readPointer++;
+	}
 
-	if(++queue.readPointer>= QUELENGTH)
+	if(queue.readPointer >= QUELENGTH)
 	{
 		queue.readPointer = 0;
 	}
@@ -214,14 +232,11 @@ void MqttInterface_SendQueue(void)
 ****************************************************************************************/
 void MqttInterface_LoadSendQueue(uint8_t dataPointer, uint8_t length, uint8_t priority)
 {
-	/* Exit function if there are items in the que and the message has a low priority */
-	if(queue.writePointer != queue.readPointer && priority == MQTTLOWPRIORITY){return;}
-
 	queue.dataLocation[queue.writePointer] 	= dataPointer;
 	queue.dataLength[queue.writePointer] 	= length;
 	queue.dataPriority[queue.writePointer]	= priority;
 
-	if(++queue.writePointer>= QUELENGTH)
+	if(++queue.writePointer >= QUELENGTH)
 	{
 		queue.writePointer = 0;
 	}
