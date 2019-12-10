@@ -88,7 +88,7 @@ void MqttInterface_ExtractReceiveBuffer(void);
 void MqttInterface_LoadSendQueue(uint8_t dataPointer, uint8_t length, uint8_t priority);
 void MqttInterface_SendQueue(void);
 
-uint8_t MqttInterface_AddStringToStringToSendBuffer(char* string, uint8_t length);
+uint8_t MqttInterface_AddStringToSendBuffer(char* string, uint8_t length);
 uint8_t MqttInterface_ExtractStringfromReceiveBuffer(char* string, uint8_t startLocation, uint8_t length);
 
 int32_t MqttInterface_ExtractValueFromString(uint8_t numberOfCharacters, char* dataReceived);

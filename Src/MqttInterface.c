@@ -293,7 +293,7 @@ void MqttInterface_ExtractReceiveBuffer(void)
 ** \return		The number of written bytes to the buffer.
 **
 ****************************************************************************************/
-uint8_t MqttInterface_AddStringToStringToSendBuffer(char* string, uint8_t length)
+uint8_t MqttInterface_AddStringToSendBuffer(char* string, uint8_t length)
 {
 uint8_t writtenBytes = 0;
 	for(uint8_t stringPointer = 0; stringPointer<length; stringPointer ++)

@@ -98,7 +98,7 @@ static void MqttStack_ConnectToBroker(void)
 	sendBuffer.data[sendBuffer.writePointer++] = 		(uint8_t)protocolLength<<8;
 	sendBuffer.data[sendBuffer.writePointer++] =		(uint8_t)protocolLength;
 
-	MqttInterface_AddStringToStringToSendBuffer(	PROTOCOL, protocolLength);
+	MqttInterface_AddStringToSendBuffer(	PROTOCOL, protocolLength);
 
 	sendBuffer.data[sendBuffer.writePointer++] =		PROTOCOLVERSION;
 	sendBuffer.data[sendBuffer.writePointer++] = 		mqttBroker.connectionFlags;
@@ -107,7 +107,7 @@ static void MqttStack_ConnectToBroker(void)
 	sendBuffer.data[sendBuffer.writePointer++] =  		0;
 	sendBuffer.data[sendBuffer.writePointer++] = 		clientIdLength;
 
-	MqttInterface_AddStringToStringToSendBuffer(	mqttBroker.clientId, clientIdLength);
+	MqttInterface_AddStringToSendBuffer(	mqttBroker.clientId, clientIdLength);
 
 	MqttInterface_LoadSendQueue(messageStart, 10 + clientIdLength + protocolLength , MQTTHIGHPRIORITY);
 
@@ -234,7 +234,7 @@ static void MqttStack_SubscribeToTopic(void)
 	sendBuffer.data[sendBuffer.writePointer++] = topicLength>>8;
 	sendBuffer.data[sendBuffer.writePointer++] = topicLength;
 
-	MqttInterface_AddStringToStringToSendBuffer(mqttSubscribe[mqttStackSubscribe.topic].topic, topicLength);
+	MqttInterface_AddStringToSendBuffer(mqttSubscribe[mqttStackSubscribe.topic].topic, topicLength);
 
 	sendBuffer.data[sendBuffer.writePointer++] = mqttSubscribe[mqttStackSubscribe.topic].qos;
 
@@ -375,7 +375,7 @@ static void MqttStack_PublishToTopic(void)
 	sendBuffer.data[sendBuffer.writePointer++] = topicLength>>8;
 	sendBuffer.data[sendBuffer.writePointer++] = topicLength;
 
-	MqttInterface_AddStringToStringToSendBuffer(	mqttPublish[mqttStackPublish.readPointer].topic, topicLength);
+	MqttInterface_AddStringToSendBuffer(	mqttPublish[mqttStackPublish.readPointer].topic, topicLength);
 
 	if(mqttPublish[mqttStackPublish.readPointer].qos > 0)
 	{
@@ -398,7 +398,7 @@ static void MqttStack_PublishToTopic(void)
 		}
 	}
 
-	MqttInterface_AddStringToStringToSendBuffer(mqttPublish[mqttStackPublish.readPointer].data, dataLength);
+	MqttInterface_AddStringToSendBuffer(mqttPublish[mqttStackPublish.readPointer].data, dataLength);
 
 	MqttInterface_LoadSendQueue(messageStart, 4+topicLength+dataLength+messageIdLength, sendPriority);
 
