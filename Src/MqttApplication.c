@@ -128,13 +128,16 @@ uint8_t MqttApplication_PublishToTopic(char* topic, uint8_t qos, uint8_t retain,
 	/* Check if data pointer is not empty */
 	if(data == NULL){return 0;}
 
-	strcpy((char*)&mqttPublish.topic, topic);
-	mqttPublish.qos = qos;
-	mqttPublish.retain = retain;
-	mqttPublish.data = data;
+	strcpy((char*)&mqttPublish[mqttStackPublish.writePointer].topic, topic);
+	mqttPublish[mqttStackPublish.writePointer].qos = qos;
+	mqttPublish[mqttStackPublish.writePointer].retain = retain;
+	mqttPublish[mqttStackPublish.writePointer].data = data;
 
-	/* Set flag to tell the stack a new message is pending */
-	mqttStackPublish.messagePending = MQTTTRUE;
+	/* Increase the write pointer to tell the stack a new message is ready to send*/
+	if(++mqttStackPublish.writePointer >= MAXPUBLISHQUEUELENGTH)
+	{
+	mqttStackPublish.writePointer = 0;
+	}
 
 	return 1;
 }

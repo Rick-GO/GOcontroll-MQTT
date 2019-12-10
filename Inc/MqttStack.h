@@ -55,6 +55,8 @@
 #define MAXTOPICCHARACTERS								50
 /* Static reserve of memory for a  maximum number of topics to subscribe to */
 #define MAXSUBSCIPTIONS									5
+/* Static reserve of memory for a  maximum number of publish messages to be queued */
+#define MAXPUBLISHQUEUELENGTH							5
 /* Define maximum number of messages that wait for acknowledgement by broker (QOS 1) */
 #define MAXACKNOWLEDGEMENTPENDING						5
 
@@ -65,6 +67,8 @@
 #define SUBSCRIBTIONACHNOWLEDGETIMEOUT					5000
 /* Define the number of subscribtion retries*/
 #define SUBSCRIBERETRIES								2
+/* Define the maximal publish interval in ms */
+#define MAXPUBLISHINTERVAL								300
 /* Define the timeout for a publish acknowledgement by the broker (qos1) */
 #define PUBLISHACKNOWLEDGETIMEOUT						5000
 /* Define the number of publish retries if not acknowledged within timeout (qos1) */
@@ -153,8 +157,11 @@ uint16_t acknowledgePendingTimer;
 }_mqttStackSubscribe;
 
 typedef struct{
+uint8_t writePointer;
+uint8_t readPointer;
 uint8_t messagePending;
 uint16_t messageIdAcknowledgePending;
+uint16_t acknowledgePendingTimer;
 uint16_t messageIdAcknowledged;
 }_mqttStackPublish;
 
@@ -196,7 +203,7 @@ _mqttStackPublishAcknowledge mqttStackPublishAcknowledge;
 
 /* subscribe and publish information */
 _mqttSubscribe mqttSubscribe[MAXSUBSCIPTIONS];
-_mqttPublish mqttPublish;
+_mqttPublish mqttPublish[MAXPUBLISHQUEUELENGTH];
 
 /* Functions taht needs to be omplemented by user (called each 10m*/
 void MqttStack_Scheduler(void);

@@ -345,31 +345,36 @@ static void MqttStack_PublishToTopic(void)
 	if(mqttStackConnection.active == MQTTFALSE){return;}
 	/* Exit publish routine if there are subscribtion active */
 	if(mqttStackSubscribe.topicCounter != mqttStackSubscribe.topic){return;}
-	/* Exit publish routine if there are no publish messages pending */
-	if(mqttStackPublish.messagePending == MQTTFALSE){return;}
-
 	/* Limit the maximal publish frequency */
+	static uint16_t publishIntervalCounter = 0;
+	if(publishIntervalCounter > 0){publishIntervalCounter--;return;}
+	/* Exit publish routine if there are no publish messages pending */
+	if(mqttStackPublish.readPointer == mqttStackPublish.writePointer){return;}
+
+	publishIntervalCounter = MAXPUBLISHINTERVAL/10;
+
+
 	uint8_t		messageStart  	= sendBuffer.writePointer;
-	uint8_t 	topicLength 	= strlen(mqttPublish.topic);
-	uint8_t 	dataLength 		= strlen(mqttPublish.data);
+	uint8_t 	topicLength 	= strlen(mqttPublish[mqttStackPublish.readPointer].topic);
+	uint8_t 	dataLength 		= strlen(mqttPublish[mqttStackPublish.readPointer].data);
 	uint8_t		messageIdLength = 0;
 	uint8_t		sendPriority	= MQTTLOWPRIORITY;
 
-	if(mqttPublish.qos > 0)
+	if(mqttPublish[mqttStackPublish.readPointer].qos > 0)
 	{
 	messageIdLength = 2;
 	sendPriority = MQTTHIGHPRIORITY;
 	}
 
-	sendBuffer.data[sendBuffer.writePointer++] =  PUBLISH |  mqttPublish.qos<<1 | mqttPublish.retain;
+	sendBuffer.data[sendBuffer.writePointer++] =  PUBLISH |  mqttPublish[mqttStackPublish.readPointer].qos<<1 | mqttPublish[mqttStackPublish.readPointer].retain;
 
 	sendBuffer.data[sendBuffer.writePointer++] =  2+topicLength+dataLength+messageIdLength;
 	sendBuffer.data[sendBuffer.writePointer++] = topicLength>>8;
 	sendBuffer.data[sendBuffer.writePointer++] = topicLength;
 
-	MqttInterface_AddStringToStringToSendBuffer(	mqttPublish.topic, topicLength);
+	MqttInterface_AddStringToStringToSendBuffer(	mqttPublish[mqttStackPublish.readPointer].topic, topicLength);
 
-	if(mqttPublish.qos > 0)
+	if(mqttPublish[mqttStackPublish.readPointer].qos > 0)
 	{
 		sendBuffer.data[sendBuffer.writePointer++] = (uint8_t) mqttStack.messageId>>8;
 		sendBuffer.data[sendBuffer.writePointer++] = (uint8_t) mqttStack.messageId;
@@ -390,13 +395,17 @@ static void MqttStack_PublishToTopic(void)
 		}
 	}
 
-	MqttInterface_AddStringToStringToSendBuffer(mqttPublish.data, dataLength);
+	MqttInterface_AddStringToStringToSendBuffer(mqttPublish[mqttStackPublish.readPointer].data, dataLength);
 
 	MqttInterface_LoadSendQueue(messageStart, 4+topicLength+dataLength+messageIdLength, sendPriority);
 
 	MqttStack_MessageIdGen();
 
-	mqttStackPublish.messagePending = 0;
+	/* Increase the read pointer because the message is send */
+	if(++mqttStackPublish.readPointer >= MAXPUBLISHQUEUELENGTH)
+	{
+	mqttStackPublish.readPointer = 0;
+	}
 }
 
 

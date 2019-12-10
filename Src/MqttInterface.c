@@ -70,7 +70,7 @@ uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port)
 	static uint8_t portSimulation = 0;
 
 	/* Check if DHCP has retrieved an IP addres */
-	if(dhcp_supplied_address(&gnetif)!= 1){return 0;}
+//	if(dhcp_supplied_address(&gnetif)!= 1){return 0;}
 
 	/* Initialize DNS to use a DNS addres instead of an IP addres */
 	dns_init();
