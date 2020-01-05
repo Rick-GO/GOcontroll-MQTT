@@ -57,21 +57,23 @@
 ****************************************************************************************/
 uint8_t MqttApplication_ConnectToBroker (char* address, uint16_t port, char* clientID, uint16_t keepAlive, uint8_t connectionsFlag)
 {
+	_mqttStackConnection * mqttStackConnection = MqttStack_ConnectionInformation();
+
 	/* Check if address is not to long */
 	if(strlen(address)>= MAXADDRESSCHARACTERS){return 0;}
-	strcpy((char*)&mqttBroker.address,address);
+	strcpy((char*)mqttStackConnection->mqttBroker.address,address);
 
-	mqttBroker.port = port;
+	mqttStackConnection->mqttBroker.port = port;
 
 	/* Check if client ID is not to long */
 	if(strlen(clientID)>= MAXCLIENTIDCHARACTERS){return 0;}
-	strcpy((char*)&mqttBroker.clientId,clientID);
+	strcpy((char*)&mqttStackConnection->mqttBroker.clientId,clientID);
 
-	mqttBroker.keepAlive = keepAlive;
+	mqttStackConnection->mqttBroker.keepAlive = keepAlive;
 
-	mqttBroker.connectionFlags = connectionsFlag;
+	mqttStackConnection->mqttBroker.connectionFlags = connectionsFlag;
 
-	mqttStackConnection.infoComplete = MQTTTRUE;
+	mqttStackConnection->infoComplete = MQTTTRUE;
 	return 1;
 }
 
@@ -87,8 +89,10 @@ uint8_t MqttApplication_ConnectToBroker (char* address, uint16_t port, char* cli
 ****************************************************************************************/
 uint8_t MqttApplication_SubscribeToTopic(char* topic, uint8_t qos, char* data)
 {
+	_mqttStackSubscribe* mqttStackSubscribe = MqttStack_SubscribeInformation();
+
 	/* Check if not already the maximum number of subscribtions are reached */
-	if(mqttStackSubscribe.topicCounter == MAXSUBSCIPTIONS){return 0;}
+	if(mqttStackSubscribe->topicCounter == MAXSUBSCIPTIONS){return 0;}
 
 	/* Check if topic is not to long */
 	if(strlen(topic) >= MAXTOPICCHARACTERS){return 0;}
@@ -97,9 +101,9 @@ uint8_t MqttApplication_SubscribeToTopic(char* topic, uint8_t qos, char* data)
 	/* Check if data pointer is not empty */
 	if(data == NULL){return 0;}
 
-	strcpy((char*)&mqttSubscribe[mqttStackSubscribe.topicCounter].topic, topic);
-	mqttSubscribe[mqttStackSubscribe.topicCounter].qos = qos;
-	mqttSubscribe[mqttStackSubscribe.topicCounter++].data = data;
+	strcpy((char*)&mqttStackSubscribe->mqttSubscribe[mqttStackSubscribe->topicCounter].topic, topic);
+	mqttStackSubscribe->mqttSubscribe[mqttStackSubscribe->topicCounter].qos = qos;
+	mqttStackSubscribe->mqttSubscribe[mqttStackSubscribe->topicCounter++].data = data;
 
 	return 1;
 }
@@ -116,6 +120,8 @@ uint8_t MqttApplication_SubscribeToTopic(char* topic, uint8_t qos, char* data)
 ****************************************************************************************/
 uint8_t MqttApplication_PublishToTopic(char* topic, uint8_t qos, uint8_t retain, char* data)
 {
+	_mqttStackPublish* mqttStackPublish = MqttStack_PublishInformation();
+
 	/* Check if string from topic is not to long */
 	if(strlen(topic) >= MAXTOPICCHARACTERS){return 0;}
 	/* Check if QOS has a value between 0 and 2 */
@@ -125,15 +131,15 @@ uint8_t MqttApplication_PublishToTopic(char* topic, uint8_t qos, uint8_t retain,
 	/* Check if data pointer is not empty */
 	if(data == NULL){return 0;}
 
-	strcpy((char*)&mqttPublish[mqttStackPublish.writePointer].topic, topic);
-	mqttPublish[mqttStackPublish.writePointer].qos = qos;
-	mqttPublish[mqttStackPublish.writePointer].retain = retain;
-	mqttPublish[mqttStackPublish.writePointer].data = data;
+	strcpy((char*)&mqttStackPublish->mqttPublish[mqttStackPublish->writePointer].topic, topic);
+	mqttStackPublish->mqttPublish[mqttStackPublish->writePointer].qos = qos;
+	mqttStackPublish->mqttPublish[mqttStackPublish->writePointer].retain = retain;
+	mqttStackPublish->mqttPublish[mqttStackPublish->writePointer].data = data;
 
 	/* Increase the write pointer to tell the stack a new message is ready to send*/
-	if(++mqttStackPublish.writePointer >= MAXPUBLISHQUEUELENGTH)
+	if(++mqttStackPublish->writePointer >= MAXPUBLISHQUEUELENGTH)
 	{
-	mqttStackPublish.writePointer = 0;
+	mqttStackPublish->writePointer = 0;
 	}
 
 	return 1;

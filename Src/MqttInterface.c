@@ -40,15 +40,29 @@
 #include "stdio.h"
 #include "string.h"
 
+/* MQTT stack includes */
+#include "MqttInterface.h"
+#include "MqttBuffer.h"
+
+
+/* NETCONN related includes */
+#if MQTTNETCONNINTERFACE == 1
 /* LwIP includes */
 #include "lwip/dhcp.h"
 #include "lwip.h"
 #include "lwip/dns.h"
 #include "api.h"
+#endif
 
-/* MQTT stack includes */
-#include "MqttStack.h"
-#include "MqttInterface.h"
+/* GOcontroll AT stack related includes */
+#if MQTTGOCONTROLLATINTERFACE == 1
+#include "AtCommandInterface.h"
+#include "AtCommandLibrary.h"
+#endif
+
+
+
+
 
 /* construct the dataholder for the connection */
 struct netconn *conn;
@@ -97,10 +111,15 @@ uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port)
 
 #else
 /* Space for other interface to use MQTT on */
+/* If this function is called it means that the connection with the TCP server is already established
+ * since the AT stack takes care of a TCP connection. So return 1 to let the MqttStack know that there
+ * is a connection
+ */
+	return 1;
 #endif
 }
 
-
+#if MQTTNETCONNINTERFACE == 1
 /***************************************************************************************
 ** \brief		Function that checks for new incoming data over the TCP connection. This
 ** 				function needs to be called from a dedicated thread/task that is allowed
@@ -112,7 +131,7 @@ uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port)
 ****************************************************************************************/
 uint8_t MqttInterface_ReceiveFromServer(void)
 {
-#if MQTTNETCONNINTERFACE == 1
+
 	struct netbuf *buf;
 
 	if(conn == NULL){return 0;}
@@ -137,22 +156,45 @@ uint8_t MqttInterface_ReceiveFromServer(void)
 		 * if disconnected by the remote */
 		return 0;
 	}
-#else
-	/* Space for other interface to use MQTT on */
-#endif
 }
+#endif
 
+#if MQTTGOCONTROLLATINTERFACE == 1
+/***************************************************************************************
+** \brief		Function that checks for new incoming data over the TCP connection. This
+** 				function needs to be called from a dedicated thread/task that is allowed
+** 				to be blocked. Don't use other routines in this thread/task since data can
+** 				be missed on the TCP connection.
+** \param		None
+** \return		1 if proper TCP connection 0 otherwise
+**
+****************************************************************************************/
+void MqttInterface_ReceiveFromServer(uint8_t* bufferLocation,uint8_t bufferPointer, uint8_t length)
+{
+	//uint8_t dataPointer = MqttBuffer_GetWritePointerReceiveBuffer();
+
+	for(uint8_t packetCopy = 0; packetCopy < length; packetCopy++)
+	{
+		 MqttBuffer_AddByteToReceiveBuffer(bufferLocation[bufferPointer++]);
+	//	receiveBuffer.data[dataPointer++] = bufferLocation[bufferPointer++];
+		//bufferLocation[*bufferPointer++] =
+	}
+	//receiveBuffer.writePointer = dataPointer;
+}
+#endif
 
 /***************************************************************************************
 ** \brief		Function that constructs the data to be send over the connection. It
-** 				constructs the data array and when ready is send the amount of bytes away=
+** 				constructs the data array and when ready is send the amount of bytes away
+** \param		Pointer to the 0 index location of the send buffer
 ** \param		Data location (index) from the sendbuffer that is filled by the stack
 ** \param		The length of the data that needs to be send
 ** \return		1 If message was send succesfully
 **
 ****************************************************************************************/
-uint8_t MqttInterface_SendToServer(uint8_t dataLocation, uint8_t length)
+uint8_t MqttInterface_SendToServer(uint8_t* data, uint8_t dataPointer, uint8_t length)
 {
+#if MQTTNETCONNINTERFACE == 1
 	static uint8_t sendBuf[256] ={0};
 	sendBuffer.readPointer = dataLocation;
 
@@ -161,168 +203,30 @@ uint8_t MqttInterface_SendToServer(uint8_t dataLocation, uint8_t length)
 		sendBuf[bufferPointer] = sendBuffer.data[sendBuffer.readPointer++];
 	}
 
-#if MQTTNETCONNINTERFACE == 1
+
 
 	if(netconn_write(conn, &sendBuf[0], length, NETCONN_NOFLAG)==ERR_OK)
 	{
-		return 1;
+		/* Let the sendQueue know that the message was send properly */
+		MqttBuffer_SendQueueSendSucces();
 	}
+
 return 0;
 
-#else
-/* Space for other interface to use MQTT on */
 #endif
-
+#if MQTTGOCONTROLLATINTERFACE == 1
+/* This AT interface function sends a piece of data in the dataBuffer tot the TCP layer */
+AtCommandInterface_SendTcpPacket (data,dataPointer, length, 1);
+return 0;
+#endif
 }
 
 
-/***************************************************************************************
-** \brief		This routine check if there are new messages added to the send queue. A
-** 				message in the queue contains the start location in the sendbuffer, the
-** 				length of a message and the priority of the message.
-** \param		None
-** \return		None
-**
-****************************************************************************************/
-void MqttInterface_SendQueue(void)
-{
-
-	/* Check if there is data in the que to send */
-	if(queue.readPointer == queue.writePointer){return;}
-
-	/* Check if there are high priority messages in the queue. If so, send them directly */
-	uint8_t tempReadPointer = queue.readPointer;
-	while(tempReadPointer != queue.writePointer)
-	{
-		if(queue.dataPriority[tempReadPointer] == MQTTHIGHPRIORITY)
-		{
-			queue.readPointer = tempReadPointer;
-			break;
-		}
-
-		if(tempReadPointer++ >= QUELENGTH)
-		{
-			tempReadPointer = 0;
-		}
-	}
 
 
-	/* Send the data to the server */
-	if (MqttInterface_SendToServer(queue.dataLocation[queue.readPointer], queue.dataLength[queue.readPointer])==1)
-	{
-		queue.readPointer++;
-	}
-
-	if(queue.readPointer >= QUELENGTH)
-	{
-		queue.readPointer = 0;
-	}
-}
 
 
-/***************************************************************************************
-** \brief		Function that is called by the stack when new data is added to the
-** 				sendBuffer. The stack gives the start location of a specific message in
-** 				the sendBuffer, the length of it and the priority.
-** \param		The pointer value (index) to the start location
-** \param		The length of the message
-** \param		The priority of the message
-** \return		None
-**
-****************************************************************************************/
-void MqttInterface_LoadSendQueue(uint8_t dataPointer, uint8_t length, uint8_t priority)
-{
-	queue.dataLocation[queue.writePointer] 	= dataPointer;
-	queue.dataLength[queue.writePointer] 	= length;
-	queue.dataPriority[queue.writePointer]	= priority;
 
-	if(++queue.writePointer >= QUELENGTH)
-	{
-		queue.writePointer = 0;
-	}
-}
-
-
-/***************************************************************************************
-** \brief		Function that extracts the messages from incomming data. This function is
-**				called by the MqttStackScheduler.
-** \param		None
-** \return		None
-**
-****************************************************************************************/
-void MqttInterface_ExtractReceiveBuffer(void)
-{
-	/* First retrieve some information about the received messages */
-	uint8_t startOfContent 		= receiveBuffer.readPointer;
-	uint8_t lengthOfContent 	= receiveBuffer.writePointer-receiveBuffer.readPointer;
-	receiveBuffer.readPointer	= receiveBuffer.writePointer;
-	uint8_t lengthCounter 		= 0;
-
-	/* As long as there is data to be read out */
-	while(lengthCounter < lengthOfContent)
-	{
-
-		switch(receiveBuffer.data[startOfContent])
-		{
-		case CONNACK: 		MqttStack_ConnectionAcknowledge(); 							break;
-		case PUBACK: 		MqttStack_PublishAcknowledgedByServer(startOfContent);		break;
-		case PUBREC: 		MqttStack_PublishReceivedByServer(startOfContent);			break;
-		case PUBCOMP: 		MqttStack_PublishCompletedByServer(startOfContent);			break;
-		case PINGRESP: 		MqttStack_PingResponseFromBroker(); 						break;
-		case PUBLISH|QOS0: 	MqttStack_ReceivePublishedMessage(startOfContent);	 		break;
-		case PUBLISH|QOS1:  MqttStack_ReceivePublishedMessage(startOfContent); 			break;
-		case PUBLISH|QOS2:  MqttStack_ReceivePublishedMessage(startOfContent);			break;
-		case SUBACK:		MqttStack_SubscribeAcknowledge();							break;
-		}
-
-		/* Increase the length of total read bytes */
-		lengthCounter += 2 + receiveBuffer.data[(uint8_t)startOfContent+1];
-
-		/* Point to the next message location */
-		startOfContent += 2 + receiveBuffer.data[(uint8_t)startOfContent+1];
-	}
-}
-
-
-/***************************************************************************************
-** \brief		Function to add a string to the sendbuffer. Since we use a circular
-** 				sendBuffer, strcpy can overwrite the buffer This function always writes
-** 				inside the circular buffer
-** \param		Pointer to the string that needs to be written in the sendbuffer
-** \param		The length of the string that needs to be written in the sendBuffer
-** \return		The number of written bytes to the buffer.
-**
-****************************************************************************************/
-uint8_t MqttInterface_AddStringToSendBuffer(char* string, uint8_t length)
-{
-uint8_t writtenBytes = 0;
-	for(uint8_t stringPointer = 0; stringPointer<length; stringPointer ++)
-	{
-		writtenBytes++;
-		sendBuffer.data[sendBuffer.writePointer++] = (uint8_t) string[stringPointer];
-	}
-return writtenBytes;
-}
-
-
-/***************************************************************************************
-** \brief		Function to retrieve a string from the circular buffer.
-** \param		Pointer to a char data holder where to store the string on
-** \param		Start location from the string in the receiveBuffer
-** \param		The length of the string that need to be read from the receiveBuffer
-** \return		The number of bytes that were read
-**
-****************************************************************************************/
-uint8_t MqttInterface_ExtractStringfromReceiveBuffer(char* string, uint8_t startLocation, uint8_t length)
-{
-uint8_t readBytes = 0;
-	for(uint8_t stringPointer = 0; stringPointer<length; stringPointer ++)
-	{
-		readBytes++;
-		string[stringPointer] = receiveBuffer.data[startLocation++];
-	}
-return readBytes;
-}
 
 
 /***************************************************************************************
@@ -376,3 +280,6 @@ int32_t MqttInterface_ExtractValueFromString(uint8_t numberOfCharacters, char *d
 	}
 return dataCalculated;
 }
+
+
+

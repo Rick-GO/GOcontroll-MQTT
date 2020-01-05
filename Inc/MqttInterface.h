@@ -43,54 +43,25 @@
 #include "stdio.h"
 
 /* Define the connection interface that is used by MQTT */
-#define MQTTNETCONNINTERFACE		1
+#define MQTTNETCONNINTERFACE		0
+/* GOcontroll AT stack for use with SIM800/7000 */
+#define MQTTGOCONTROLLATINTERFACE	1
 /* Define other interfaces that need to be used */
 
-/* Define the maximal length of the message queue */
-#define QUELENGTH 					10
-
-typedef struct{
-uint16_t dataLocation[QUELENGTH];
-uint16_t dataLength[QUELENGTH];
-uint8_t dataPriority[QUELENGTH];
-uint8_t writePointer;
-uint8_t readPointer;
-}_queue;
-
-_queue queue;
 
 
-/* Keep these buffer sizes 256 since the read and
- * write pointer make use of natural overflow.
- */
-typedef struct{
-uint8_t data[256];
-uint8_t writePointer;
-uint8_t readPointer;
-}_receiveBuffer;
-
-_receiveBuffer receiveBuffer;
-
-
-typedef struct{
-uint8_t data[256];
-uint8_t writePointer;
-uint8_t readPointer;
-}_sendBuffer;
-
-_sendBuffer sendBuffer;
 
 uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port);
-uint8_t MqttInterface_SendToServer(uint8_t dataLocation, uint8_t length);
+uint8_t MqttInterface_SendToServer(uint8_t* data, uint8_t dataLocation, uint8_t length);
+#if MQTTNETCONNINTERFACE == 1
 uint8_t MqttInterface_ReceiveFromServer(void);
-void MqttInterface_ExtractReceiveBuffer(void);
+#endif
+#if MQTTGOCONTROLLATINTERFACE == 1
+void MqttInterface_ReceiveFromServer(uint8_t* bufferLocation, uint8_t bufferPointer, uint8_t length);
+#endif
 
-void MqttInterface_LoadSendQueue(uint8_t dataPointer, uint8_t length, uint8_t priority);
-void MqttInterface_SendQueue(void);
+int32_t MqttInterface_ExtractValueFromString(uint8_t numberOfCharacters, char *dataReceived);
 
-uint8_t MqttInterface_AddStringToSendBuffer(char* string, uint8_t length);
-uint8_t MqttInterface_ExtractStringfromReceiveBuffer(char* string, uint8_t startLocation, uint8_t length);
 
-int32_t MqttInterface_ExtractValueFromString(uint8_t numberOfCharacters, char* dataReceived);
 
 #endif /* GOCONTROLL_INC_MQTTINTERFACE_H_ */

@@ -44,6 +44,40 @@
 #include "MqttInterface.h"
 #include "MqttApplication.h"
 #include "MqttStack.h"
+#include "MqttBuffer.h"
+
+typedef struct{
+uint16_t messageId;
+uint16_t mqttConnectionsLost;
+}_mqttStack;
+
+_mqttStack mqttStack;
+
+
+typedef struct{
+uint8_t acknowledgePending;
+uint32_t timer;
+}_mqttStackPing;
+
+_mqttStackPing mqttStackPing;
+
+
+typedef struct{
+uint16_t messageId[MAXACKNOWLEDGEMENTPENDING];
+uint8_t messageLocation[MAXACKNOWLEDGEMENTPENDING];
+uint8_t messageLengthRemaining[MAXACKNOWLEDGEMENTPENDING];
+uint16_t messageTimeout[MAXACKNOWLEDGEMENTPENDING];
+uint8_t messageFailed[MAXACKNOWLEDGEMENTPENDING];
+uint8_t messagePointer;
+}_mqttStackPublishAcknowledge;
+
+_mqttStackPublishAcknowledge mqttStackPublishAcknowledge;
+
+
+_mqttStackConnection mqttStackConnection;
+_mqttStackSubscribe mqttStackSubscribe;
+_mqttStackPublish mqttStackPublish;
+
 
 /* MQTT stack functions */
 static void MqttStack_ConnectToBroker(void);
@@ -83,33 +117,33 @@ static void MqttStack_ConnectToBroker(void)
 
 
 	/* Make connection with the server. This function checks for DHCP address so it can take a while */
-	if (MqttInterface_ConnectToServer(mqttBroker.address,mqttBroker.port) == 0){return;}
+	if (MqttInterface_ConnectToServer(mqttStackConnection.mqttBroker.address,mqttStackConnection.mqttBroker.port) == 0){return;}
 
 	/* Be sure a client ID of 0 does not occur */
 	MqttStack_MessageIdGen();
 
-	uint8_t 	clientIdLength 		= strlen(mqttBroker.clientId);
+	uint8_t 	clientIdLength 		= strlen(mqttStackConnection.mqttBroker.clientId);
 	uint16_t 	protocolLength 		= strlen(PROTOCOL);
-	uint8_t	messageStart		= sendBuffer.writePointer;
+	uint8_t		messageStart		= MqttBuffer_GetWritePointerSendBuffer();
 
-	sendBuffer.data[sendBuffer.writePointer++] =		CONNECT;
+	 MqttBuffer_AddByteToSendBuffer(		CONNECT);
 
-	sendBuffer.data[sendBuffer.writePointer++] =		clientIdLength + (uint8_t)protocolLength + 8;
-	sendBuffer.data[sendBuffer.writePointer++] = 		(uint8_t)protocolLength<<8;
-	sendBuffer.data[sendBuffer.writePointer++] =		(uint8_t)protocolLength;
+	 MqttBuffer_AddByteToSendBuffer(		clientIdLength + (uint8_t)protocolLength + 8);
+	 MqttBuffer_AddByteToSendBuffer( 		(uint8_t)protocolLength<<8);
+	 MqttBuffer_AddByteToSendBuffer(		(uint8_t)protocolLength);
 
-	MqttInterface_AddStringToSendBuffer(	PROTOCOL, protocolLength);
+	MqttBuffer_AddStringToSendBuffer(PROTOCOL, protocolLength);
 
-	sendBuffer.data[sendBuffer.writePointer++] =		PROTOCOLVERSION;
-	sendBuffer.data[sendBuffer.writePointer++] = 		mqttBroker.connectionFlags;
-	sendBuffer.data[sendBuffer.writePointer++] = 		(uint8_t)mqttBroker.keepAlive>>8;
-	sendBuffer.data[sendBuffer.writePointer++] = 		(uint8_t)mqttBroker.keepAlive;
-	sendBuffer.data[sendBuffer.writePointer++] =  		0;
-	sendBuffer.data[sendBuffer.writePointer++] = 		clientIdLength;
+	 MqttBuffer_AddByteToSendBuffer(		PROTOCOLVERSION);
+	 MqttBuffer_AddByteToSendBuffer( 		mqttStackConnection.mqttBroker.connectionFlags);
+	 MqttBuffer_AddByteToSendBuffer( 		(uint8_t)mqttStackConnection.mqttBroker.keepAlive>>8);
+	 MqttBuffer_AddByteToSendBuffer( 		(uint8_t)mqttStackConnection.mqttBroker.keepAlive);
+	 MqttBuffer_AddByteToSendBuffer(  		0);
+	 MqttBuffer_AddByteToSendBuffer( 		clientIdLength);
 
-	MqttInterface_AddStringToSendBuffer(	mqttBroker.clientId, clientIdLength);
+	MqttBuffer_AddStringToSendBuffer(mqttStackConnection.mqttBroker.clientId, clientIdLength);
 
-	MqttInterface_LoadSendQueue(messageStart, 10 + clientIdLength + protocolLength , MQTTHIGHPRIORITY);
+	MqttBuffer_LoadSendQueue(messageStart, 10 + clientIdLength + protocolLength , MQTTHIGHPRIORITY);
 
 	mqttStackConnection.acknowledgePending = MQTTTRUE;
 }
@@ -143,7 +177,7 @@ static void MqttStack_PingToBroker(void)
 	if(mqttStackConnection.active == MQTTFALSE){return;}
 
 	/* Only send ping if keep alive time exeeds */
-	if((mqttStackPing.timer++) < 100 * mqttBroker.keepAlive){return;}
+	if((mqttStackPing.timer++) < 100 * mqttStackConnection.mqttBroker.keepAlive){return;}
 
 	/* Set pingtimer PINGACHNOWLEDGETIMEOUT ms back to schedule an extra ping */
 	mqttStackPing.timer = mqttStackPing.timer - (PINGACHNOWLEDGETIMEOUT/10);
@@ -156,12 +190,12 @@ static void MqttStack_PingToBroker(void)
 	return;
 	}
 
-	uint16_t	messageStart  = sendBuffer.writePointer;
+	uint16_t	messageStart  = MqttBuffer_GetWritePointerSendBuffer();
 
-	sendBuffer.data[sendBuffer.writePointer++] = PINGREQ;
-	sendBuffer.data[sendBuffer.writePointer++] = 0;
+	 MqttBuffer_AddByteToSendBuffer( PINGREQ);
+	 MqttBuffer_AddByteToSendBuffer( 0);
 
-	MqttInterface_LoadSendQueue(messageStart, 2, MQTTHIGHPRIORITY);
+	MqttBuffer_LoadSendQueue(messageStart, 2, MQTTHIGHPRIORITY);
 
 }
 
@@ -223,22 +257,22 @@ static void MqttStack_SubscribeToTopic(void)
 	}
 
 
-	uint8_t	messageStart  	= sendBuffer.writePointer;
-	uint8_t 	topicLength 	= strlen(mqttSubscribe[mqttStackSubscribe.topic].topic);
+	uint8_t	messageStart  		= MqttBuffer_GetWritePointerSendBuffer();
+	uint8_t 	topicLength 	= strlen(mqttStackSubscribe.mqttSubscribe[mqttStackSubscribe.topic].topic);
 
-	sendBuffer.data[sendBuffer.writePointer++] = SUBSCRIBE | QOS1 | dupFlag;
-	sendBuffer.data[sendBuffer.writePointer++] = 5+topicLength;
-	sendBuffer.data[sendBuffer.writePointer++] = (uint8_t) mqttStack.messageId>>8;
-	sendBuffer.data[sendBuffer.writePointer++] = (uint8_t) mqttStack.messageId;
+	 MqttBuffer_AddByteToSendBuffer( SUBSCRIBE | QOS1 | dupFlag);
+	 MqttBuffer_AddByteToSendBuffer( 5+topicLength);
+	 MqttBuffer_AddByteToSendBuffer( (uint8_t) mqttStack.messageId>>8);
+	 MqttBuffer_AddByteToSendBuffer( (uint8_t) mqttStack.messageId);
 
-	sendBuffer.data[sendBuffer.writePointer++] = topicLength>>8;
-	sendBuffer.data[sendBuffer.writePointer++] = topicLength;
+	 MqttBuffer_AddByteToSendBuffer( topicLength>>8);
+	 MqttBuffer_AddByteToSendBuffer( topicLength);
 
-	MqttInterface_AddStringToSendBuffer(mqttSubscribe[mqttStackSubscribe.topic].topic, topicLength);
+	MqttBuffer_AddStringToSendBuffer(mqttStackSubscribe.mqttSubscribe[mqttStackSubscribe.topic].topic, topicLength);
 
-	sendBuffer.data[sendBuffer.writePointer++] = mqttSubscribe[mqttStackSubscribe.topic].qos;
+	 MqttBuffer_AddByteToSendBuffer( mqttStackSubscribe.mqttSubscribe[mqttStackSubscribe.topic].qos);
 
-	MqttInterface_LoadSendQueue(messageStart, 7 +topicLength, MQTTHIGHPRIORITY);
+	MqttBuffer_LoadSendQueue(messageStart, 7 +topicLength, MQTTHIGHPRIORITY);
 
 	MqttStack_MessageIdGen();
 
@@ -276,16 +310,16 @@ void MqttStack_ReceivePublishedMessage(uint8_t startOfContent)
 {
 	/* Retrieve the QOS from the received message */
 	uint8_t qos;
-	qos = (uint8_t)(receiveBuffer.data[startOfContent] & 0x06)>>1;
+	qos = (uint8_t)(MqttBuffer_ReadByteFromReceiveBuffer(startOfContent) & 0x06)>>1;
 
 	/* Retrieve the remaining length from the message */
 	uint8_t remainingLength;
-	remainingLength = (uint8_t)receiveBuffer.data[startOfContent+1];
+	remainingLength = (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent+1);
 
 	/* Retrieve the topic of the received publish message */
 	uint16_t topicLength;
-	topicLength = (uint8_t)receiveBuffer.data[startOfContent+2]<<8;
-	topicLength = (uint8_t)receiveBuffer.data[startOfContent+3];
+	topicLength = (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent+2)<<8;
+	topicLength = (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent+3);
 
 	/* Retrieve the message identifier from the received message */
 	uint8_t messageIdlength = 0;
@@ -296,40 +330,40 @@ void MqttStack_ReceivePublishedMessage(uint8_t startOfContent)
 
 	char topic[MAXTOPICCHARACTERS];
 
-	MqttInterface_ExtractStringfromReceiveBuffer(topic,startOfContent+4,topicLength);
+	MqttBuffer_ExtractStringfromReceiveBuffer(topic,startOfContent+4,topicLength);
 
 	/* Check which location owns this topic */
 	uint8_t pointer;
 	for(pointer = 0; pointer < MAXSUBSCIPTIONS; pointer ++)
 	{
 		/* Check if there is a topic on the specified location */
-		if(mqttSubscribe[pointer].topic[0] == 0)
+		if(mqttStackSubscribe.mqttSubscribe[pointer].topic[0] == 0)
 		{
 		continue;
 		}
 
 		/* If stored topic meets the received topic */
-		if(strcmp( topic, mqttSubscribe[pointer].topic) == 0)
+		if(strcmp( topic, mqttStackSubscribe.mqttSubscribe[pointer].topic) == 0)
 		{
-			mqttSubscribe[pointer].newDataReceived =  MQTTTRUE;
-			MqttInterface_ExtractStringfromReceiveBuffer(mqttSubscribe[pointer].data,startOfContent+4+topicLength+messageIdlength,remainingLength-topicLength-messageIdlength);
+			mqttStackSubscribe.mqttSubscribe[pointer].newDataReceived =  MQTTTRUE;
+			MqttBuffer_ExtractStringfromReceiveBuffer(mqttStackSubscribe.mqttSubscribe[pointer].data,startOfContent+4+topicLength+messageIdlength,remainingLength-topicLength-messageIdlength);
 			break;
 		}
 	}
 
 	if(qos == 1)
 	{
-		uint8_t		messageStart  	= sendBuffer.writePointer;
+		uint8_t		messageStart  	= MqttBuffer_GetWritePointerSendBuffer();
 
-		mqttSubscribe[pointer].messageId  = (uint16_t)receiveBuffer.data[startOfContent+4+topicLength]<<8;
-		mqttSubscribe[pointer].messageId |= (uint16_t)receiveBuffer.data[startOfContent+5+topicLength];
+		mqttStackSubscribe.mqttSubscribe[pointer].messageId  = (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent+4+topicLength)<<8;
+		mqttStackSubscribe.mqttSubscribe[pointer].messageId += (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent+5+topicLength);
 
-		sendBuffer.data[sendBuffer.writePointer++] =  PUBACK;
-		sendBuffer.data[sendBuffer.writePointer++] =  2;
-		sendBuffer.data[sendBuffer.writePointer++] =  (uint8_t)mqttSubscribe[pointer].messageId>>8;
-		sendBuffer.data[sendBuffer.writePointer++] =  (uint8_t)mqttSubscribe[pointer].messageId;
+		 MqttBuffer_AddByteToSendBuffer(  PUBACK);
+		 MqttBuffer_AddByteToSendBuffer(  2);
+		 MqttBuffer_AddByteToSendBuffer(  (uint8_t)mqttStackSubscribe.mqttSubscribe[pointer].messageId>>8);
+		 MqttBuffer_AddByteToSendBuffer(  (uint8_t)mqttStackSubscribe.mqttSubscribe[pointer].messageId);
 
-		MqttInterface_LoadSendQueue(messageStart, 4 , MQTTHIGHPRIORITY);
+		MqttBuffer_LoadSendQueue(messageStart, 4 , MQTTHIGHPRIORITY);
 	}
 }
 
@@ -357,30 +391,30 @@ static void MqttStack_PublishToTopic(void)
 	publishIntervalCounter = MAXPUBLISHINTERVAL/10;
 
 
-	uint8_t		messageStart  	= sendBuffer.writePointer;
-	uint8_t 	topicLength 	= strlen(mqttPublish[mqttStackPublish.readPointer].topic);
-	uint8_t 	dataLength 		= strlen(mqttPublish[mqttStackPublish.readPointer].data);
+	uint8_t		messageStart  	= MqttBuffer_GetWritePointerSendBuffer();
+	uint8_t 	topicLength 	= strlen(mqttStackPublish.mqttPublish[mqttStackPublish.readPointer].topic);
+	uint8_t 	dataLength 		= strlen(mqttStackPublish.mqttPublish[mqttStackPublish.readPointer].data);
 	uint8_t		messageIdLength = 0;
 	uint8_t		sendPriority	= MQTTLOWPRIORITY;
 
-	if(mqttPublish[mqttStackPublish.readPointer].qos > 0)
+	if(mqttStackPublish.mqttPublish[mqttStackPublish.readPointer].qos > 0)
 	{
 	messageIdLength = 2;
 	sendPriority = MQTTHIGHPRIORITY;
 	}
 
-	sendBuffer.data[sendBuffer.writePointer++] =  PUBLISH |  mqttPublish[mqttStackPublish.readPointer].qos<<1 | mqttPublish[mqttStackPublish.readPointer].retain;
+	 MqttBuffer_AddByteToSendBuffer(  PUBLISH |  mqttStackPublish.mqttPublish[mqttStackPublish.readPointer].qos<<1 | mqttStackPublish.mqttPublish[mqttStackPublish.readPointer].retain);
 
-	sendBuffer.data[sendBuffer.writePointer++] =  2+topicLength+dataLength+messageIdLength;
-	sendBuffer.data[sendBuffer.writePointer++] = topicLength>>8;
-	sendBuffer.data[sendBuffer.writePointer++] = topicLength;
+	 MqttBuffer_AddByteToSendBuffer(  2+topicLength+dataLength+messageIdLength);
+	 MqttBuffer_AddByteToSendBuffer( topicLength>>8);
+	 MqttBuffer_AddByteToSendBuffer( topicLength);
 
-	MqttInterface_AddStringToSendBuffer(	mqttPublish[mqttStackPublish.readPointer].topic, topicLength);
+	MqttBuffer_AddStringToSendBuffer(mqttStackPublish.mqttPublish[mqttStackPublish.readPointer].topic, topicLength);
 
-	if(mqttPublish[mqttStackPublish.readPointer].qos > 0)
+	if(mqttStackPublish.mqttPublish[mqttStackPublish.readPointer].qos > 0)
 	{
-		sendBuffer.data[sendBuffer.writePointer++] = (uint8_t) mqttStack.messageId>>8;
-		sendBuffer.data[sendBuffer.writePointer++] = (uint8_t) mqttStack.messageId;
+		 MqttBuffer_AddByteToSendBuffer( (uint8_t) mqttStack.messageId>>8);
+		 MqttBuffer_AddByteToSendBuffer( (uint8_t) mqttStack.messageId);
 
 		mqttStackPublish.messageIdAcknowledgePending = mqttStack.messageId;
 
@@ -398,9 +432,9 @@ static void MqttStack_PublishToTopic(void)
 		}
 	}
 
-	MqttInterface_AddStringToSendBuffer(mqttPublish[mqttStackPublish.readPointer].data, dataLength);
+	MqttBuffer_AddStringToSendBuffer(mqttStackPublish.mqttPublish[mqttStackPublish.readPointer].data, dataLength);
 
-	MqttInterface_LoadSendQueue(messageStart, 4+topicLength+dataLength+messageIdLength, sendPriority);
+	MqttBuffer_LoadSendQueue(messageStart, 4+topicLength+dataLength+messageIdLength, sendPriority);
 
 	MqttStack_MessageIdGen();
 
@@ -438,8 +472,8 @@ static void MqttStack_PublishAcknowledgedCheck(void)
 					break;
 				}
 				/* Check if message is not already overwritten in buffer */
-				if((sendBuffer.data[mqttStackPublishAcknowledge.messageLocation[pointer]] && PUBLISH) != 1 ||
-				   (sendBuffer.data[mqttStackPublishAcknowledge.messageLocation[pointer]+1] != mqttStackPublishAcknowledge.messageLengthRemaining[pointer]))
+				if((MqttBuffer_ReadByteFromSendBuffer(mqttStackPublishAcknowledge.messageLocation[pointer]) && PUBLISH) != 1 ||
+				   (MqttBuffer_ReadByteFromSendBuffer(mqttStackPublishAcknowledge.messageLocation[pointer]+1) != mqttStackPublishAcknowledge.messageLengthRemaining[pointer]))
 				{
 					/* The data is possibly overwritten by new data */
 					mqttStackPublishAcknowledge.messageId[pointer] = 0;
@@ -447,9 +481,9 @@ static void MqttStack_PublishAcknowledgedCheck(void)
 				}
 
 				/* Redeliver a QOS 1 message so add duplicate flag */
-				sendBuffer.data[mqttStackPublishAcknowledge.messageLocation[pointer]] |= DUP;
+				MqttBuffer_AddByteToSendBuffer( mqttStackPublishAcknowledge.messageLocation[pointer] |= DUP);
 
-				MqttInterface_LoadSendQueue(mqttStackPublishAcknowledge.messageLocation[pointer],mqttStackPublishAcknowledge.messageLengthRemaining[pointer], MQTTHIGHPRIORITY);
+				MqttBuffer_LoadSendQueue(mqttStackPublishAcknowledge.messageLocation[pointer],mqttStackPublishAcknowledge.messageLengthRemaining[pointer], MQTTHIGHPRIORITY);
 				mqttStackPublishAcknowledge.messageTimeout[pointer] = 0;
 				/* Acknowledgement by Broker failed in between time period. */
 				mqttStackPublishAcknowledge.messageFailed[pointer] ++;
@@ -471,8 +505,8 @@ void MqttStack_PublishAcknowledgedByServer(uint8_t startOfContent)
 {
 
 	uint16_t messageId;
-	messageId  = (uint8_t)receiveBuffer.data[startOfContent +2]<<8;
-	messageId |= (uint8_t)receiveBuffer.data[startOfContent +3];
+	messageId  = (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent +2)<<8;
+	messageId |= (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent +3);
 
 	for(uint8_t pointer = 0; pointer < MAXACKNOWLEDGEMENTPENDING; pointer ++)
 	{
@@ -496,19 +530,19 @@ void MqttStack_PublishAcknowledgedByServer(uint8_t startOfContent)
 ****************************************************************************************/
 void MqttStack_PublishReceivedByServer(uint8_t startOfContent)
 {
-	mqttStackPublish.messageIdAcknowledged  = (uint8_t)receiveBuffer.data[startOfContent +2]<<8;
-	mqttStackPublish.messageIdAcknowledged |= (uint8_t)receiveBuffer.data[startOfContent +3];
+	mqttStackPublish.messageIdAcknowledged  = (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent +2)<<8;
+	mqttStackPublish.messageIdAcknowledged |= (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent +3);
 	mqttStackPublish.messagePending = 0;
 
-	uint16_t	messageStart  	= sendBuffer.writePointer;
+	uint16_t	messageStart  	= MqttBuffer_GetWritePointerSendBuffer();;
 
-	sendBuffer.data[sendBuffer.writePointer++] =  PUBREL|  QOS1;
-	sendBuffer.data[sendBuffer.writePointer++] =  2;
+	 MqttBuffer_AddByteToSendBuffer(  PUBREL|  QOS1);
+	 MqttBuffer_AddByteToSendBuffer(  2);
 
-	sendBuffer.data[sendBuffer.writePointer++] = receiveBuffer.data[startOfContent +2];
-	sendBuffer.data[sendBuffer.writePointer++] = receiveBuffer.data[startOfContent +3];
+	 MqttBuffer_AddByteToSendBuffer( MqttBuffer_ReadByteFromReceiveBuffer(startOfContent +2));
+	 MqttBuffer_AddByteToSendBuffer( MqttBuffer_ReadByteFromReceiveBuffer(startOfContent +3));
 
-	MqttInterface_LoadSendQueue(messageStart, 4, MQTTHIGHPRIORITY);
+	MqttBuffer_LoadSendQueue(messageStart, 4, MQTTHIGHPRIORITY);
 }
 
 
@@ -521,8 +555,8 @@ void MqttStack_PublishReceivedByServer(uint8_t startOfContent)
 ****************************************************************************************/
 void MqttStack_PublishCompletedByServer(uint8_t startOfContent)
 {
-	mqttStackPublish.messageIdAcknowledged  = (uint8_t)receiveBuffer.data[startOfContent +2]<<8;
-	mqttStackPublish.messageIdAcknowledged |= (uint8_t)receiveBuffer.data[startOfContent +3];
+	mqttStackPublish.messageIdAcknowledged  = (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent +2)<<8;
+	mqttStackPublish.messageIdAcknowledged |= (uint8_t)MqttBuffer_ReadByteFromReceiveBuffer(startOfContent +3);
 	mqttStackPublish.messagePending = 0;
 }
 
@@ -572,14 +606,9 @@ static void MqttStack_ReinitializeConnection(void)
 	mqttStackPublishAcknowledge.messageId[pointer] = 0;
 	}
 
-	queue.readPointer = 0;
-	queue.writePointer = 0;
+	/* Reinitialize the MQTT buffer related properties */
+	MqttBuffer_Reinitialize();
 
-	receiveBuffer.readPointer = 0;
-	receiveBuffer.writePointer = 0;
-
-	sendBuffer.readPointer = 0;
-	sendBuffer.writePointer = 0;
 
 	mqttStack.mqttConnectionsLost++;
 }
@@ -599,6 +628,44 @@ void MqttStack_Scheduler(void)
 	MqttStack_PublishToTopic();
 	MqttStack_PublishAcknowledgedCheck();
 
-	MqttInterface_SendQueue();
-	MqttInterface_ExtractReceiveBuffer();
+	MqttBuffer_SendQueue();
+	MqttBuffer_ExtractReceiveBuffer();
 }
+
+
+/***************************************************************************************
+** \brief		Utility function to provide acces to the connection information
+** \param		None
+** \return		pointer to the memory location of the connection information structure
+**
+****************************************************************************************/
+_mqttStackConnection* MqttStack_ConnectionInformation(void)
+{
+return (_mqttStackConnection*) &mqttStackConnection;
+}
+
+
+/***************************************************************************************
+** \brief		Utility function to provide acces to the subscribe information
+** \param		None
+** \return		Pointer to the memory location of the subscribe informationstructure
+**
+****************************************************************************************/
+_mqttStackSubscribe* MqttStack_SubscribeInformation(void)
+{
+return (_mqttStackSubscribe*) &mqttStackSubscribe;
+}
+
+
+/***************************************************************************************
+** \brief		Utility function to provide acces to the publish information
+** \param		None
+** \return		Pointer to memory location of hte publish information structure
+**
+****************************************************************************************/
+_mqttStackPublish* MqttStack_PublishInformation(void)
+{
+return (_mqttStackPublish*) &mqttStackPublish;
+}
+
+

@@ -74,9 +74,10 @@
 /* Define the number of publish retries if not acknowledged within timeout (qos1) */
 #define PUBLISHRETRIES									2
 /* Define the timeout for a ping acknowledgement by the broker */
-#define PINGACHNOWLEDGETIMEOUT							5000
+#define PINGACHNOWLEDGETIMEOUT							10000
 /* Define the number of ping retries when not acknowledged within time */
 #define PINGRETRIES										3
+
 
 /* Connection Flags */
 #define CONNECTIONUSENAME		0x80
@@ -88,39 +89,55 @@
 #define CONNECTIONWILL			0x04
 #define CONNECTIONCLEANSESION	0x02
 
-/* Protocol defines */
-#define CONNECT					0x10
-#define CONNACK					0x20
-#define PUBLISH					0x30
-#define PUBACK					0x40
-#define PUBREC					0x50
-#define PUBREL					0x60
-#define PUBCOMP					0x70
-#define SUBSCRIBE				0x80
-#define SUBACK					0x90
-#define UNSUBSCRIBE				0xA0
-#define UNSUBACK				0xB0
-#define PINGREQ					0xC0
-#define PINGRESP				0xD0
-#define DISCONNECT				0xE0
-
-/* Message configurations */
-#define DUP						0x04
-#define QOS0					0x00
-#define QOS1					0x02
-#define QOS2					0x04
-#define QOS3					0x06
-#define RETAIN					0x01
-
-#define MQTTTRUE				1
-#define MQTTFALSE				0
-
 #define SETMESSAGEID			1
 #define ACKNOWLEDGEMESSAGEID	2
 
-#define MQTTHIGHPRIORITY		1
-#define MQTTNORMALPRIORITY		2
-#define MQTTLOWPRIORITY			3
+/* Protocol defines */
+typedef enum
+{
+CONNECT				=	0x10,
+CONNACK				=	0x20,
+PUBLISH				=	0x30,
+PUBACK				=	0x40,
+PUBREC				=	0x50,
+PUBREL				=	0x60,
+PUBCOMP				=	0x70,
+SUBSCRIBE			=	0x80,
+SUBACK				=	0x90,
+UNSUBSCRIBE			=	0xA0,
+UNSUBACK			=	0xB0,
+PINGREQ				=	0xC0,
+PINGRESP			=	0xD0,
+DISCONNECT			=	0xE0
+} _mqttMessage;
+
+/* Message configurations */
+typedef enum
+{
+DUP					=	0x04,
+QOS0				=	0x00,
+QOS1				=	0x02,
+QOS2				=	0x04,
+QOS3				=	0x06,
+RETAIN				=	0x01
+} _mqttMessageProperties;
+
+typedef enum
+{
+MQTTTRUE			=	0x01,
+MQTTFALSE			=	0x00
+} _mqttLogic;
+
+
+typedef enum
+{
+MQTTHIGHPRIORITY	=	0x01,
+MQTTNORMALPRIORITY	=	0x02,
+MQTTLOWPRIORITY		=	0x03
+} _mqttMessagePriority;
+
+
+
 
 typedef struct{
 char		address[MAXADDRESSCHARACTERS];
@@ -132,46 +149,14 @@ uint8_t		connectionFlags;
 
 
 typedef struct{
-uint16_t messageId;
-uint16_t mqttConnectionsLost;
-}_mqttStack;
-
-typedef struct{
 uint8_t infoComplete;
 uint8_t acknowledgePending;
 uint16_t acknowledgePendingCounter;
 uint8_t active;
+_mqttBroker mqttBroker;
 }_mqttStackConnection;
 
-typedef struct{
-uint8_t acknowledgePending;
-uint32_t timer;
-}_mqttStackPing;
 
-typedef struct{
-uint8_t topicCounter;
-uint8_t topic;
-uint8_t acknowledgePending;
-uint16_t acknowledgePendingTimer;
-}_mqttStackSubscribe;
-
-typedef struct{
-uint8_t writePointer;
-uint8_t readPointer;
-uint8_t messagePending;
-uint16_t messageIdAcknowledgePending;
-uint16_t acknowledgePendingTimer;
-uint16_t messageIdAcknowledged;
-}_mqttStackPublish;
-
-typedef struct{
-uint16_t messageId[MAXACKNOWLEDGEMENTPENDING];
-uint8_t messageLocation[MAXACKNOWLEDGEMENTPENDING];
-uint8_t messageLengthRemaining[MAXACKNOWLEDGEMENTPENDING];
-uint16_t messageTimeout[MAXACKNOWLEDGEMENTPENDING];
-uint8_t messageFailed[MAXACKNOWLEDGEMENTPENDING];
-uint8_t messagePointer;
-}_mqttStackPublishAcknowledge;
 
 typedef struct{
 char topic[MAXTOPICCHARACTERS];
@@ -182,29 +167,33 @@ char* data;
 }_mqttSubscribe;
 
 typedef struct{
+uint8_t topicCounter;
+uint8_t topic;
+uint8_t acknowledgePending;
+uint16_t acknowledgePendingTimer;
+_mqttSubscribe mqttSubscribe[MAXSUBSCIPTIONS];
+}_mqttStackSubscribe;
+
+
+typedef struct{
 char topic[MAXTOPICCHARACTERS];
 uint8_t qos;
 uint8_t retain;
 char* data;
 }_mqttPublish;
 
-
-/* Broker information */
-_mqttBroker mqttBroker;
-
-/* Stack information */
-_mqttStack mqttStack;
-_mqttStackConnection mqttStackConnection;
-_mqttStackPing mqttStackPing;
-_mqttStackSubscribe mqttStackSubscribe;
-_mqttStackPublish mqttStackPublish;
-_mqttStackPublishAcknowledge mqttStackPublishAcknowledge;
-
-/* subscribe and publish information */
-_mqttSubscribe mqttSubscribe[MAXSUBSCIPTIONS];
+typedef struct{
+uint8_t writePointer;
+uint8_t readPointer;
+uint8_t messagePending;
+uint16_t messageIdAcknowledgePending;
+uint16_t acknowledgePendingTimer;
+uint16_t messageIdAcknowledged;
 _mqttPublish mqttPublish[MAXPUBLISHQUEUELENGTH];
+}_mqttStackPublish;
 
-/* Functions taht needs to be omplemented by user (called each 10m*/
+
+/* Functions that needs to be implemented by user (called each 10m*/
 void MqttStack_Scheduler(void);
 
 /* Functions needed by MqttInterface */
@@ -216,5 +205,8 @@ void MqttStack_PublishAcknowledgedByServer(uint8_t startOfContent);
 void MqttStack_PublishReceivedByServer(uint8_t startOfContent);
 void MqttStack_PublishCompletedByServer(uint8_t startOfContent);
 
+_mqttStackConnection* MqttStack_ConnectionInformation(void);
+_mqttStackSubscribe* MqttStack_SubscribeInformation(void);
+_mqttStackPublish* MqttStack_PublishInformation(void);
 
 #endif /* GOCONTROLL_INC_MQTTSTACK_H_ */
