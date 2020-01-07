@@ -48,7 +48,7 @@
 
 typedef struct{
 uint16_t messageId;
-uint16_t mqttConnectionsLost;
+uint16_t mqttConnectionsMade;
 }_mqttStack;
 
 _mqttStack mqttStack;
@@ -86,8 +86,6 @@ static void MqttStack_SubscribeToTopic(void);
 static void MqttStack_PublishToTopic(void);
 static void MqttStack_MessageIdGen(void);
 static void MqttStack_PublishAcknowledgedCheck(void);
-static void MqttStack_ReinitializeConnection(void);
-
 
 /***************************************************************************************
 ** \brief		Function to construct the message to connect to the Broker. This function
@@ -105,7 +103,7 @@ static void MqttStack_ConnectToBroker(void)
 		mqttStackConnection.acknowledgePendingCounter ++;
 		if(mqttStackConnection.acknowledgePendingCounter > CONNECTIONACKNOWLEDGEMENTTIMEOUT/10)
 		{
-			MqttStack_ReinitializeConnection();
+			MqttApplication_ConnectionFail(MQTT_CONNECT_TIMEOUT);
 		}
 		return;
 	}
@@ -186,7 +184,7 @@ static void MqttStack_PingToBroker(void)
 	/* In case PINGRETRIES pings are not acknowledged by broker, restart connection */
 	if(mqttStackPing.acknowledgePending >=PINGRETRIES)
 	{
-		MqttStack_ReinitializeConnection();
+		MqttApplication_ConnectionFail(MQTT_PING_TIMEOUT);
 	return;
 	}
 
@@ -249,7 +247,7 @@ static void MqttStack_SubscribeToTopic(void)
 		if(subscribeFail >= SUBSCRIBERETRIES)
 		{
 		subscribeFail = 0;
-		MqttStack_ReinitializeConnection();
+		MqttApplication_ConnectionFail(MQTT_SUBSCRIBE_TIMEOUT);
 		return;
 		}
 
@@ -585,7 +583,7 @@ static void MqttStack_MessageIdGen(void)
 ** \return		None
 **
 ****************************************************************************************/
-static void MqttStack_ReinitializeConnection(void)
+void MqttStack_Initialize(void)
 {
 	mqttStackConnection.active = 0;
 	mqttStackConnection.acknowledgePendingCounter = 0;
@@ -606,11 +604,7 @@ static void MqttStack_ReinitializeConnection(void)
 	mqttStackPublishAcknowledge.messageId[pointer] = 0;
 	}
 
-	/* Reinitialize the MQTT buffer related properties */
-	MqttBuffer_Reinitialize();
-
-
-	mqttStack.mqttConnectionsLost++;
+	mqttStack.mqttConnectionsMade++;
 }
 
 

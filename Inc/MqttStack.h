@@ -139,6 +139,8 @@ MQTTLOWPRIORITY		=	0x03
 
 
 
+
+
 typedef struct{
 char		address[MAXADDRESSCHARACTERS];
 uint16_t 	port;
@@ -204,6 +206,7 @@ void MqttStack_ReceivePublishedMessage(uint8_t startOfContent);
 void MqttStack_PublishAcknowledgedByServer(uint8_t startOfContent);
 void MqttStack_PublishReceivedByServer(uint8_t startOfContent);
 void MqttStack_PublishCompletedByServer(uint8_t startOfContent);
+void MqttStack_Initialize(void);
 
 _mqttStackConnection* MqttStack_ConnectionInformation(void);
 _mqttStackSubscribe* MqttStack_SubscribeInformation(void);
