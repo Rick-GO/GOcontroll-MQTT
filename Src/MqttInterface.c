@@ -43,6 +43,7 @@
 /* MQTT stack includes */
 #include "MqttInterface.h"
 #include "MqttBuffer.h"
+#include "MqttStack.h"
 
 
 /* NETCONN related includes */
@@ -59,9 +60,6 @@
 #include "AtCommandInterface.h"
 #include "AtCommandLibrary.h"
 #endif
-
-
-
 
 
 /* construct the dataholder for the connection */
@@ -220,13 +218,6 @@ AtCommandInterface_SendTcpPacket (data,dataPointer, length, 1);
 return 0;
 #endif
 }
-
-
-
-
-
-
-
 
 
 /***************************************************************************************

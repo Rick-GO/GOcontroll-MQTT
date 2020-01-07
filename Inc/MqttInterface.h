@@ -49,8 +49,6 @@
 /* Define other interfaces that need to be used */
 
 
-
-
 uint8_t MqttInterface_ConnectToServer(char* address, uint16_t port);
 uint8_t MqttInterface_SendToServer(uint8_t* data, uint8_t dataLocation, uint8_t length);
 #if MQTTNETCONNINTERFACE == 1
