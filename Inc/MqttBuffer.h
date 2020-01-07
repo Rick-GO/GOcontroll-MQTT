@@ -55,6 +55,6 @@ uint8_t MqttBuffer_GetWritePointerReceiveBuffer(void);
 
 uint8_t MqttBuffer_AddStringToSendBuffer(char* string, uint8_t length);
 uint8_t MqttBuffer_ExtractStringfromReceiveBuffer(char* string, uint8_t startLocation, uint8_t length);
-void MqttBuffer_Reinitialize(void);
+void 	MqttBuffer_Initialize(void);
 
 #endif /* GOCONTROLL_MQTT_INC_MQTTBUFFER_H_ */

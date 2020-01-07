@@ -315,7 +315,7 @@ return readBytes;
 ** \return		none
 **
 ****************************************************************************************/
-void MqttBuffer_Reinitialize(void)
+void MqttBuffer_Initialize(void)
 {
 	queue.readPointer = 0;
 	queue.writePointer = 0;
