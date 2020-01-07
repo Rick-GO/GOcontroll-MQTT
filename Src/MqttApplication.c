@@ -43,16 +43,18 @@
 /* MQTT stack includes */
 #include "MqttStack.h"
 #include "MqttInterface.h"
+#include "MqttBuffer.h"
+#include "MqttApplication.h"
 
 
 /***************************************************************************************
-** \brief		Function that connects to the Broker.
-** \param		Address of the broker on which to connect to
-** \param		Port from the broker to connect to
-** \param		Pointer to the string that holds the client ID
-** \param		Keep alive ping period in seconds
-**  \param		Connection flags  (see MqttApplication.h for flags)
-** \return		1 if information was ok, 0 if one of parameters was not correct
+** \brief	Function that connects to the Broker.
+** \param	Address of the broker on which to connect to
+** \param	Port from the broker to connect to
+** \param	Pointer to the string that holds the client ID
+** \param	Keep alive ping period in seconds
+**  \param	Connection flags  (see MqttApplication.h for flags)
+** \return	1 if information was ok, 0 if one of parameters was not correct
 **
 ****************************************************************************************/
 uint8_t MqttApplication_ConnectToBroker (char* address, uint16_t port, char* clientID, uint16_t keepAlive, uint8_t connectionsFlag)
@@ -79,12 +81,12 @@ uint8_t MqttApplication_ConnectToBroker (char* address, uint16_t port, char* cli
 
 
 /***************************************************************************************
-** \brief		Function that subscribes to a topic.
-** \param		Pointer to a string that contains the topic
-** \param		The qos (0,1,2) that is required for the message delivery (NOTE: QOS2 not tested)
-** \param		Pointer to data string that holds the data comming from the broker if other
-** 				client publish to the subscribed topic.
-** \return		1 if information was ok, 0 if one of parameters was not correct
+** \brief	Function that subscribes to a topic.
+** \param	Pointer to a string that contains the topic
+** \param	The qos (0,1,2) that is required for the message delivery (NOTE: QOS2 not tested)
+** \param	Pointer to data string that holds the data comming from the broker if other
+** 			client publish to the subscribed topic.
+** \return	1 if information was ok, 0 if one of parameters was not correct
 **
 ****************************************************************************************/
 uint8_t MqttApplication_SubscribeToTopic(char* topic, uint8_t qos, char* data)
@@ -110,12 +112,12 @@ uint8_t MqttApplication_SubscribeToTopic(char* topic, uint8_t qos, char* data)
 
 
 /***************************************************************************************
-** \brief		Function that can be used to publish to a topic.
-** \param		Pointer to a string that contains the topic
-** \param		The qos (0,1,2) that is required for the message delivery (NOTE: QOS2 not tested)
-** \param		Retain flag (0-1) 1 keep on broker, 0 forget message
-** \param		Pointer to data string that holds the data to publish
-** \return		1 if information was ok, 0 if one of parameters was not correct
+** \brief	Function that can be used to publish to a topic.
+** \param	Pointer to a string that contains the topic
+** \param	The qos (0,1,2) that is required for the message delivery (NOTE: QOS2 not tested)
+** \param	Retain flag (0-1) 1 keep on broker, 0 forget message
+** \param	Pointer to data string that holds the data to publish
+** \return	1 if information was ok, 0 if one of parameters was not correct
 **
 ****************************************************************************************/
 uint8_t MqttApplication_PublishToTopic(char* topic, uint8_t qos, uint8_t retain, char* data)
@@ -147,12 +149,12 @@ uint8_t MqttApplication_PublishToTopic(char* topic, uint8_t qos, uint8_t retain,
 
 
 /***************************************************************************************
-** \brief		Example function to extract a specific value from a key:value pair in
-** 				A JSON string if present
-** \param		Pointer to a data string that contains the JSON key:value pair
-** \param		Pointer to a string thet holds the key.
-** \param		Pointer to int32 variable to store new value on.
-** \return		1 if key and value were found 0 otherwise
+** \brief	Example function to extract a specific value from a key:value pair in
+** \		A JSON string if present
+** \param	Pointer to a data string that contains the JSON key:value pair
+** \param	Pointer to a string thet holds the key.
+** \param	Pointer to int32 variable to store new value on.
+** \return	1 if key and value were found 0 otherwise
 **
 ****************************************************************************************/
 uint8_t MqttApplication_ExtractJsonString(char* data, char* key, int32_t* value)
@@ -195,4 +197,41 @@ char tempValue[15] = {0};
 		}
 	}
 return 0;
+}
+
+
+/***************************************************************************************
+** \brief	This function needs to be called when the MQTT stack is initialized for
+** \		the first time or if the stack needs to be reinitialized after connection
+** \		loss.
+** \param	none
+** \return	None
+**
+****************************************************************************************/
+void MqttApplication_Initialize(void)
+{
+	/* Set all stack parameters to initialization state */
+	MqttStack_Initialize();
+
+	/* Set all buffer parameters to initialization state */
+	MqttBuffer_Initialize();
+}
+
+/***************************************************************************************
+** \brief	Function that is called when the stack stops the MQTT connection
+** \param	The MQTT error that causes the stop of the connection
+** \return	None
+**
+****************************************************************************************/
+void MqttApplication_ConnectionFail(_mqttError mqttError)
+{
+	switch(mqttError)
+	{
+		case MQTT_CONNECT_TIMEOUT:
+		break;
+		case MQTT_PING_TIMEOUT:
+		break;
+		case MQTT_SUBSCRIBE_TIMEOUT:
+		break;
+	}
 }

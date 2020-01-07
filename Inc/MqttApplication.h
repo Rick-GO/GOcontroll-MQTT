@@ -41,9 +41,18 @@
 
 #include "stdio.h"
 
+typedef enum
+{
+MQTT_CONNECT_TIMEOUT	=	0x01,
+MQTT_PING_TIMEOUT		=	0x02,
+MQTT_SUBSCRIBE_TIMEOUT	=	0x03
+} _mqttError;
+
 uint8_t MqttApplication_ConnectToBroker (char* address, uint16_t port, char* clientID, uint16_t keepAlive, uint8_t connectionsFlag);
 uint8_t MqttApplication_SubscribeToTopic(char* topic, uint8_t qos, char* data);
 uint8_t MqttApplication_PublishToTopic(char* topic, uint8_t qos, uint8_t retain, char* data);
 uint8_t MqttApplication_ExtractJsonString(char* data, char* key, int32_t* value);
+void MqttApplication_Initialize(void);
+void MqttApplication_ConnectionFail(_mqttError mqttError);
 
 #endif /* GOCONTROLL_INC_MQTTAPPLICATION_H_ */
