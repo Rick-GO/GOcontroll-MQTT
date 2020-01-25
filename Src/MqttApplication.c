@@ -149,12 +149,12 @@ uint8_t MqttApplication_PublishToTopic(char* topic, uint8_t qos, uint8_t retain,
 
 
 /***************************************************************************************
-** \brief	Example function to extract a specific value from a key:value pair in
-** \		A JSON string if present
-** \param	Pointer to a data string that contains the JSON key:value pair
-** \param	Pointer to a string thet holds the key.
-** \param	Pointer to int32 variable to store new value on.
-** \return	1 if key and value were found 0 otherwise
+** \brief		Example function to extract a specific value from a key:value pair in
+** 				A JSON string if present
+** \param		Pointer to a data string that contains the JSON key:value pair
+** \param		Pointer to a string thet holds the key.
+** \param		Pointer to int32 variable to store new value on.
+** \return		1 if key and value were found 0 otherwise
 **
 ****************************************************************************************/
 uint8_t MqttApplication_ExtractJsonString(char* data, char* key, int32_t* value)
@@ -168,13 +168,28 @@ char tempValue[15] = {0};
 		/* Possible start of Key */
 		if(data[pointer++] == '\"')
 		{
-			for(uint8_t charPointer = 0; charPointer < strlen(key); charPointer++)
+			uint8_t charPointer = 0;
+			while(data[pointer] != '\"')
 			{
-				if(data[pointer++] != key[charPointer])
+				/* Check if key that is read is different than wished */
+				if(data[pointer] != key[charPointer])
 				{
 				/* If character is not the same as key, continue to check the data */
-				continue;
+				/* charPointer = 0 meands the folowing if (lengthcheck will exit the loop */
+				charPointer = 0;
+				break;
 				}
+				else
+				{
+				charPointer++;
+				}
+			pointer++;
+			}
+
+			/* If key match check if key lengths are equal */
+			if(charPointer != strlen(key))
+			{
+			continue;
 			}
 			/* If all characters from the key match, check if next character is quote */
 			if(data[pointer++] == '\"')
