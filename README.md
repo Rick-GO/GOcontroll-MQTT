@@ -17,7 +17,7 @@ GOcontroll-MQTT is a lightweight, client orientated MQTT stack to construct mess
 
 ## Stack build-up
 
-There are 3 source files which their corresponding header files which needs to be added to a project.
+There are 4 source files which their corresponding header files which needs to be added to a project.
 
 
 ***MqttApplication.c***
@@ -34,6 +34,11 @@ This file contains the functions that handle specific communication with the com
 
 This file contains the core functions that handle the actual MQTT functionality. Changing this file is only interesting when the user decide to add or improve functionality. The corresponding header file provides some tweak functions to change timeouts, 
 retries and some other parameters. This can be useful if another communication interface is used which has to deal with more latency.
+
+
+***MqttBuffer.c***
+
+Functions that handle the incoming and outgoing datastreams. The buffer mechanisms are circular and the outgoing messages are set in a send queue. This queue checks the priority of the messages send to the broker. For example, if queue is growing with messages but there are acknowledgements pending (from other messages that are send), the queue will check for the highest priority messages and send these messages first. This is an advantage for example ping messages. If there was a short interruption of the communication, the ping will be send first to keep the connection with the broker alive. 
 
 
 ## Stack implementation
